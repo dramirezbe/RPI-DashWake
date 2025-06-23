@@ -1,52 +1,31 @@
-# Prerequisites
-*.d
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+#Core
+core-venv/
 
-# Linker output
-*.ilk
-*.map
-*.exp
+#Frontend
+frontend/node_modules/
+frontend/dist
+frontend/dist-ssr
+frontend/*.local
 
-# Precompiled Headers
-*.gch
-*.pch
+# Frontend Logs
+frontend/logs
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
+#Backend
+backend/node_modules/
