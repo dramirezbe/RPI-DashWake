@@ -10,7 +10,9 @@
 *.sw?
 
 #Core
-core-venv/
+Core/test/build/
+
+Core/build/
 
 #Frontend
 frontend/node_modules/
