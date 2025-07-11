@@ -1,0 +1,53 @@
+/* APConfig.css */
+.ap-config-container {
+  min-height: 100vh;
+  background-color: #f3f4f6; /* Corresponds to bg-gray-100 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem; /* Corresponds to p-4 */
+}
+
+.ap-config-card {
+  background-color: #ffffff; /* Corresponds to bg-white */
+  padding: 2rem; /* Corresponds to p-8 */
+  border-radius: 0.5rem; /* Corresponds to rounded-lg */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Corresponds to shadow-lg */
+  max-width: 28rem; /* Corresponds to max-w-md */
+  width: 100%;
+  text-align: center;
+}
+
+.ap-config-title {
+  font-size: 1.875rem; /* Corresponds to text-3xl */
+  font-weight: 700; /* Corresponds to font-bold */
+  color: #1f2937; /* Corresponds to text-gray-800 */
+  margin-bottom: 1.5rem; /* Corresponds to mb-6 */
+}
+
+.ap-config-description {
+  color: #4b5563; /* Corresponds to text-gray-600 */
+  margin-bottom: 1rem; /* Corresponds to mb-4 */
+}
+
+.ap-config-actions {
+  margin-top: 1.5rem; /* Corresponds to mt-6 */
+}
+
+.ap-config-button {
+  background-color: #3b82f6; /* Corresponds to bg-blue-500 */
+  color: #ffffff; /* Corresponds to text-white */
+  font-weight: 700; /* Corresponds to font-bold */
+  padding: 0.5rem 1rem; /* Corresponds to py-2 px-4 */
+  border-radius: 9999px; /* Corresponds to rounded-full */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Corresponds to shadow-md */
+  transition: all 0.3s ease-in-out; /* Corresponds to transition duration-300 ease-in-out */
+  border: none;
+  cursor: pointer;
+}
+
+.ap-config-button:hover {
+  background-color: #2563eb; /* Corresponds to hover:bg-blue-600 */
+  transform: scale(1.05); /* Corresponds to hover:scale-105 */
+}
