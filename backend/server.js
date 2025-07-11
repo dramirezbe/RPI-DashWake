@@ -2,7 +2,14 @@
 *@file server.js
 */
 
+//Corregir
+const web_state_t = {
+    CAPTIVE_PORTAL = 0,
+    FRONTEND_WEB = 1
+}
+
 VERBOSE = true
+DEFAULT_STATE = web_state_t CAPTIVE_PORTAL
 
 const path = require('path');
 const express = require('express');
@@ -17,21 +24,32 @@ if (VERBOSE) {
     console.log('Path of server.js:', serverJsPath);
 }
 
+//Corregir
+switch (DEFAULT_STATE) {
+    case:
+
+        break;
+}
 
 const captivePortalPath = path.join(serverJsPath, "..", "captive_portal", "dist");
 
 if (VERBOSE) {
     console.log('Captive Portal Path:', captivePortalPath);
 }
-const usersJsonPath = path.join(serverJsPath, "..", "backend", "db", "users.json");
+
+const dbPath = path.join(serverJsPath, "..", "backend", "db");
 
 if (VERBOSE) {
-    console.log('users.json Path:', usersJsonPath);
+    console.log('db Path:', dbPath);
 }
 
 app.use(express.static(captivePortalPath)); //Serve page
 
+app.get('*', (req, res) => {
+    res.sendFile(path.join(captivePortalPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-    console.log(`--------------------- http://localhost:${PORT} ---------------------`);
+    console.log(`server.js listening on port ${PORT}`);
+    console.log(`---Web URL: http://localhost:${PORT} ---`);
 });
