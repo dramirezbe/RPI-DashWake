@@ -31,3 +31,6 @@ frontend/lerna-debug.log*
 
 #Backend
 backend/node_modules/
+
+
+server/server-venv/

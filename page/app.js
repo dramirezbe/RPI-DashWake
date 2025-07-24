@@ -1,3 +1,6 @@
+/**@file app.js */
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const connectionStatus = document.getElementById('connection-status');
     const dateDisplay = document.getElementById('date-display');

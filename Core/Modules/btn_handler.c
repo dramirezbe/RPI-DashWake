@@ -6,11 +6,11 @@
 #include "btn_handler.h"
 
 // Define the global flag
-volatile int button_flag = 0;
+volatile bool button_press = false;
 
 // Interrupt handler function
 void button_isr(void) {
-    button_flag = 1;
+    button_press = true;
     printf("[ISR] Button pressed. Flag set to 1.\n");
 }
 

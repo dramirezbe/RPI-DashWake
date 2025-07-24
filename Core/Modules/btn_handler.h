@@ -9,9 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 //btn_flag as global extern var
-extern volatile int button_flag;
+extern volatile bool button_press;
 
 // Function to initialize the button and interrupt
 void button_init(uint8_t btn_pin);
