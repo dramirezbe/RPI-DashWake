@@ -15,4 +15,5 @@
 // Function prototype for read_dht11_dat
 void read_dht11_dat(int *dht11_dat, int DHTPIN);
 
-#endif // DHT11DRIVER_H
+#endif
+// DHT11DRIVER_H

@@ -19,4 +19,5 @@ void button_init(uint8_t btn_pin);
 // Interrupt Service Routine (ISR) to be called when the button is pressed
 void button_isr(void);
 
-#endif // BTN_HANDLER_H
+#endif
+// BTN_HANDLER_H
