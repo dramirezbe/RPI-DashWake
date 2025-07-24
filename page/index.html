@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBERNETICS DASHBOARD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container glitch-effect">
+        <h1 class="neon-text">CYBERNETICS DASHBOARD</h1>
+
+        <div class="status-section">
+            <p>CONEXIÓN: <span id="connection-status" class="status-disconnected">OFFLINE</span></p>
+        </div>
+
+        <div class="display-grid">
+            <div class="display-box date-time">
+                <p>FECHA:</p>
+                <div id="date-display" class="display-value large-text">--/--/----</div>
+                <p>HORA:</p>
+                <div id="hour-display" class="display-value large-text">--:--:--</div>
+            </div>
+
+            <div class="display-box alarm-status">
+                <p>ALARM STATUS:</p>
+                <div id="alarm-display" class="display-value status-alarm-off">DESACTIVADA</div>
+                <button id="toggle-alarm-btn" class="cyber-button">TOGGLE ALARM</button>
+            </div>
+
+            <div class="display-box sensor-data">
+                <p>SENSORES:</p>
+                <div class="sensor-row">
+                    <span>HUMEDAD:</span>
+                    <span id="humidity-display" class="display-value">--%</span>
+                </div>
+                <div class="sensor-row">
+                    <span>TEMP C:</span>
+                    <span id="temperature-display" class="display-value">--°C</span>
+                </div>
+                <div class="sensor-row">
+                    <span>AIRE:</span>
+                    <span id="air-quality-display" class="display-value">----</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="log-area">
+            <h2>> LOG <</h2>
+            <ul id="log-list">
+                <li>[INIT] System booting...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
