@@ -7,6 +7,8 @@
 
 #include <wiringPi.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 
 //btn_flag as global extern var
 extern volatile int button_flag;
