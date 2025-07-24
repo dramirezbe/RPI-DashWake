@@ -11,6 +11,9 @@
 #include <wiringPi.h>
 
 #include "Modules/btn_handler.h"
+#include "Modules/ntp_over_http.h"
+
+#define SERIAL_PORT "/dev/serial0"
 
 #define BAUD_RATE 9600
 
@@ -44,12 +47,29 @@ int main( void )
 
     button_init(BTN_PIN);
 
+    NTP_Time current_time;
+
+    if (get_http_time(current_time) == 0) {
+        printf("Date (DD/MM/YY): %d/%d/%d\n",
+               current_time.date[0],
+               current_time.date[1],
+               current_time.date[2]);
+
+        printf("Time (HH:MM:SS): %02d:%02d:%02d\n",
+               current_time.time[2],
+               current_time.time[1],
+               current_time.time[0]);
+    } else {
+        fprintf(stderr, "Failed to retrieve or parse the time.\n");
+        return 1;
+    }
+
     while ( 1 )
     {
 
         if (button_flag == 1)
         {
-            printf("Button Pressed......................................");
+            printf("Button Pressed.............");
             button_flag = 0;
         }
         // 3. Verifica si hay datos disponibles para leer en el buffer de la UART
@@ -85,7 +105,7 @@ int main( void )
 
         delay(1);
     }
-    
+
     serialClose(fd);
     return 0;
 }
