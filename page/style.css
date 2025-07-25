@@ -36,6 +36,7 @@ body {
     position: relative;
     overflow: hidden;
     margin: 20px;
+    z-index: 1; /* Asegura que el contenido esté por encima del glitch */
 }
 
 /* Glitch Effect */
@@ -138,13 +139,13 @@ h2 {
 
 .display-box p {
     margin: 5px 0;
-    color: var(--accent-color);
+    color: var(--accent-color); /* Por defecto, los valores de texto son cian */
     font-size: 1.1em;
 }
 
 .display-value {
     font-size: 1.6em;
-    color: var(--text-color);
+    color: var(--text-color); /* Los valores principales son verde neón */
     text-shadow: 0 0 3px var(--text-color);
     padding: 5px 0;
 }

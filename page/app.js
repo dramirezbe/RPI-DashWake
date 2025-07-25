@@ -1,113 +1,170 @@
-/**@file app.js */
-
-
 document.addEventListener('DOMContentLoaded', () => {
-    const connectionStatus = document.getElementById('connection-status');
-    const dateDisplay = document.getElementById('date-display');
-    const hourDisplay = document.getElementById('hour-display');
-    const alarmDisplay = document.getElementById('alarm-display');
-    const humidityDisplay = document.getElementById('humidity-display');
-    const temperatureDisplay = document.getElementById('temperature-display');
-    const airQualityDisplay = document.getElementById('air-quality-display');
-    const toggleAlarmBtn = document.getElementById('toggle-alarm-btn');
+    // Referencias a elementos del DOM
+    const websocketStatus = document.getElementById('websocket-status');
+    const ntpDate = document.getElementById('ntp-date');
+    const ntpHour = document.getElementById('ntp-hour');
+    const sensorDataList = document.getElementById('sensor-data-list');
+    const alarmStatus = document.getElementById('alarm-status');
+    const alarmLastEvent = document.getElementById('alarm-last-event');
+    // const toggleAlarmBtn = document.getElementById('toggle-alarm-btn'); // Eliminado
     const logList = document.getElementById('log-list');
 
+    // Configuración de WebSocket
+    const websocketUrl = `ws://${window.location.hostname}:8001`; 
+    let ws;
+
+    // Estado actual de la alarma (para controlar visualmente)
+    let isAlarmActive = false;
+    let alarmInterval = null; // Para el parpadeo
+
     // Función para añadir mensajes al log
-    const addLog = (message, isError = false) => {
-        const listItem = document.createElement('li');
-        const timestamp = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        listItem.textContent = `[${timestamp}] ${message}`;
-        if (isError) {
-            listItem.style.color = 'var(--error-color)';
+    function addLog(message, type = 'INFO') {
+        const li = document.createElement('li');
+        const now = new Date();
+        const timestamp = `[${now.toLocaleDateString('es-CO')} ${now.toLocaleTimeString('es-CO')}]`;
+        li.textContent = `${timestamp} [${type.toUpperCase()}] ${message}`;
+        logList.prepend(li);
+        if (logList.children.length > 50) {
+            logList.removeChild(logList.lastChild);
         }
-        logList.appendChild(listItem);
-        // Scroll al final del log
-        logList.scrollTop = logList.scrollHeight;
-    };
+    }
 
-    let ws; // Variable para almacenar la instancia del WebSocket
+    // Función para activar/desactivar el parpadeo de la alarma
+    function setAlarmVisualState(active) {
+        if (active && !isAlarmActive) { // Si la alarma se activa y no estaba activa
+            alarmStatus.textContent = 'ARMED // ALERT';
+            alarmStatus.className = 'display-value status-alarm-on';
+            alarmLastEvent.textContent = `ALERT active as of ${new Date().toLocaleTimeString('es-CO')}`;
+            addLog('Alarm state changed to ARMED.', 'ALARM');
+            isAlarmActive = true;
+        } else if (!active && isAlarmActive) { // Si la alarma se desactiva y estaba activa
+            alarmStatus.textContent = 'DISARMED';
+            alarmStatus.className = 'display-value status-alarm-off';
+            alarmLastEvent.textContent = `DISARMED by external trigger at ${new Date().toLocaleTimeString('es-CO')}`;
+            addLog('Alarm state changed to DISARMED.', 'ALARM');
+            isAlarmActive = false;
+        }
+        // Si el estado no cambia, no hacemos nada para evitar spam de logs.
+    }
 
-    const connectWebSocket = () => {
-        addLog('Attempting to connect to WebSocket...');
-        // Asegúrate de que la URL (ws://localhost:8080) coincida con la dirección de tu servidor C
-        ws = new WebSocket('ws://localhost:8080');
 
-        ws.onopen = () => {
-            connectionStatus.textContent = 'ONLINE';
-            connectionStatus.classList.remove('status-disconnected');
-            connectionStatus.classList.add('status-connected');
-            addLog('WebSocket connection established.');
-            // console.log('WebSocket connection established.');
+    // Función para conectar al WebSocket
+    function connectWebSocket() {
+        ws = new WebSocket(websocketUrl);
+
+        ws.onopen = (event) => {
+            console.log('[WEBSOCKET] Connection opened:', event);
+            websocketStatus.textContent = '[ STATUS // ONLINE ]';
+            websocketStatus.className = 'status-connected';
+            addLog('WebSocket connection established.', 'SUCCESS');
+            // Al conectar, asumimos alarma desactivada hasta recibir datos
+            setAlarmVisualState(false); 
         };
 
         ws.onmessage = (event) => {
-            // console.log('Message from server:', event.data);
             try {
-                const data = JSON.parse(event.data);
-                // console.log('Parsed JSON:', data);
-
-                // Actualizar Fecha y Hora
-                dateDisplay.textContent = data.date || '--/--/----';
-                hourDisplay.textContent = data.hour || '--:--:--';
-
-                // Actualizar Alarma
-                if (data.alarm) {
-                    alarmDisplay.textContent = data.alarm;
-                    if (data.alarm === 'ACTIVADA') {
-                        alarmDisplay.classList.remove('status-alarm-off');
-                        alarmDisplay.classList.add('status-alarm-on');
-                    } else {
-                        alarmDisplay.classList.remove('status-alarm-on');
-                        alarmDisplay.classList.add('status-alarm-off');
-                    }
+                const message = JSON.parse(event.data);
+                console.log('[WEBSOCKET] Message received:', message);
+                addLog(`Data received for ${message.filename} (State: ${message.state})`, 'DATA');
+                
+                // Actualizar la interfaz de usuario según el archivo JSON recibido
+                switch (message.state) {
+                    case 'NTP_UPDATE':
+                        updateNTPDisplay(message.data);
+                        break;
+                    case 'SENSOR_UPDATE':
+                        updateSensorDisplay(message.data);
+                        break;
+                    case 'ALARM_STOP':
+                        updateAlarmDisplay(message.data);
+                        break;
+                    default:
+                        addLog(`Unknown state: ${message.state} for ${message.filename}`, 'WARNING');
+                        break;
                 }
-
-                // Actualizar Sensores
-                if (data.sensors) {
-                    // Formato: |hum|temp|aire
-                    const sensorValues = data.sensors.split('|').filter(Boolean); // Filter(Boolean) elimina strings vacías
-                    if (sensorValues.length === 3) {
-                        humidityDisplay.textContent = `${sensorValues[0]}%`;
-                        temperatureDisplay.textContent = `${sensorValues[1]}°C`;
-                        airQualityDisplay.textContent = sensorValues[2];
-                    } else {
-                        addLog('Sensor data format error.', true);
-                    }
-                }
-
             } catch (e) {
-                addLog(`Error parsing JSON: ${e.message} - Data: ${event.data}`, true);
-                // console.error('Error parsing JSON:', e, 'Data:', event.data);
+                addLog(`Error parsing WebSocket message: ${e.message}. Raw: ${event.data.substring(0, 100)}...`, 'ERROR');
+                console.error('Error parsing message:', e, event.data);
             }
         };
 
         ws.onclose = (event) => {
-            connectionStatus.textContent = 'OFFLINE';
-            connectionStatus.classList.remove('status-connected');
-            connectionStatus.classList.add('status-disconnected');
-            addLog(`WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}. Reconnecting in 3 seconds...`, true);
-            // console.warn('WebSocket connection closed:', event);
-            // Intentar reconectar después de un breve retraso
-            setTimeout(connectWebSocket, 3000);
+            console.warn('[WEBSOCKET] Connection closed:', event);
+            websocketStatus.textContent = '[ STATUS // OFFLINE // RECONNECTING... ]';
+            websocketStatus.className = 'status-disconnected';
+            addLog('WebSocket connection closed. Attempting to reconnect in 3 seconds...', 'ERROR');
+            setTimeout(connectWebSocket, 3000); // Intenta reconectar después de 3 segundos
         };
 
         ws.onerror = (error) => {
-            addLog(`WebSocket error: ${error.message || 'Unknown error'}`, true);
-            // console.error('WebSocket error:', error);
-            ws.close(); // Forzar el cierre para intentar reconectar
+            console.error('[WEBSOCKET] Error:', error);
+            websocketStatus.textContent = '[ STATUS // ERROR // CHECK CONSOLE ]';
+            websocketStatus.className = 'status-disconnected';
+            addLog('WebSocket error. Check console for details.', 'CRITICAL');
+            ws.close(); // Cierra para forzar un reintento de conexión
         };
-    };
+    }
 
-    // Manejar el botón de toggle de alarma
-    toggleAlarmBtn.addEventListener('click', () => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send('toggle_alarm'); // Enviar un mensaje al servidor para que cambie el estado
-            addLog('Sent "toggle_alarm" command to server.');
+    // --- Funciones de actualización de la UI ---
+
+    function updateNTPDisplay(data) {
+        if (data && typeof data === 'object') {
+            ntpDate.textContent = data.date || 'N/A';
+            ntpHour.textContent = data.hour || 'N/A';
+            addLog('NTP data updated.', 'UPDATE');
         } else {
-            addLog('Cannot toggle alarm: WebSocket is not open.', true);
+            addLog('Invalid NTP data received.', 'ERROR');
         }
-    });
+    }
 
-    // Iniciar la conexión cuando la página cargue
+    function updateSensorDisplay(data) {
+        sensorDataList.innerHTML = ''; // Limpiar datos anteriores
+        if (data && typeof data === 'object') {
+            // Mapping para nombres legibles
+            const sensorLabels = {
+                "hum": "Humidity",
+                "tempC": "Temperature (°C)",
+                "mq7Adc": "MQ7 ADC"
+            };
+
+            for (const key in data) {
+                if (Object.hasOwnProperty.call(data, key)) {
+                    const value = data[key];
+                    const label = sensorLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); // Formato para otras claves
+                    const sensorRow = document.createElement('p');
+                    sensorRow.className = 'sensor-row';
+                    sensorRow.innerHTML = `<span>${label}:</span> <span class="display-value">${value}</span>`;
+                    sensorDataList.appendChild(sensorRow);
+                }
+            }
+            addLog('Sensor data updated.', 'UPDATE');
+        } else {
+            addLog('Invalid Sensor data received.', 'ERROR');
+        }
+    }
+
+    function updateAlarmDisplay(data) {
+        if (data && typeof data === 'object' && 'alarm_stopped' in data) {
+            // Si alarm_stopped es true, la alarma está desactivada
+            setAlarmVisualState(!data.alarm_stopped); // true -> false (desactivada), false -> true (activada)
+            addLog(`Alarm stopped status received: ${data.alarm_stopped}`, 'ALARM_EVENT');
+        } else {
+            addLog('Invalid Alarm data received.', 'ERROR');
+        }
+    }
+
+    // --- Event Listeners (Solo si no hay envío de comandos) ---
+    // Si el botón de alarma no envía comandos, se elimina su event listener.
+    // toggleAlarmBtn.addEventListener('click', () => { ... });
+
+    // Iniciar la conexión WebSocket cuando el DOM esté completamente cargado
     connectWebSocket();
+
+    // Inicializar visualmente con mensajes de espera
+    websocketStatus.textContent = '[ STATUS // INIT // CONNECTING... ]';
+    addLog('Client interface loaded.', 'INFO');
+
+    // Simular que la alarma está activa inicialmente para probar la desactivación.
+    // Esto es solo para la demostración visual, no depende de un archivo.
+    setAlarmVisualState(true); 
 });

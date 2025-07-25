@@ -1,60 +1,59 @@
-<!-- @file index.html -->
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBERNETICS DASHBOARD</title>
+    <title>RPI-DASHWAKE // System Monitor</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
 </head>
 <body>
     <div class="container glitch-effect">
-        <h1 class="neon-text">CYBERNETICS DASHBOARD</h1>
+        <h1 class="neon-text">RPI-DASHWAKE // SYSTEM MONITOR</h1>
 
         <div class="status-section">
-            <p>CONEXIÓN: <span id="connection-status" class="status-disconnected">OFFLINE</span></p>
+            <p id="websocket-status" class="status-disconnected">
+                [ INIT // ESTABLISHING CONNECTION ]
+            </p>
         </div>
 
         <div class="display-grid">
-            <div class="display-box date-time">
-                <p>FECHA:</p>
-                <div id="date-display" class="display-value large-text">--/--/----</div>
-                <p>HORA:</p>
-                <div id="hour-display" class="display-value large-text">--:--:--</div>
+            <div class="display-box">
+                <h2>[ NTP ] STATUS</h2>
+                <p>DATE: <span id="ntp-date" class="display-value large-text">--/--/----</span></p>
+                <p>HOUR: <span id="ntp-hour" class="display-value large-text">--:--:--</span></p>
             </div>
 
-            <div class="display-box alarm-status">
-                <p>ALARM STATUS:</p>
-                <div id="alarm-display" class="display-value status-alarm-off">DESACTIVADA</div>
-                <button id="toggle-alarm-btn" class="cyber-button">TOGGLE ALARM</button>
+            <div class="display-box">
+                <h2>[ SENSOR ] READINGS</h2>
+                <div id="sensor-data-list">
+                    <p class="sensor-row">
+                        <span>Humidity:</span> <span class="display-value">N/A</span>
+                    </p>
+                    <p class="sensor-row">
+                        <span>Temperature:</span> <span class="display-value">N/A</span>
+                    </p>
+                    <p class="sensor-row">
+                        <span>MQ7 ADC:</span> <span class="display-value">N/A</span>
+                    </p>
+                </div>
             </div>
 
-            <div class="display-box sensor-data">
-                <p>SENSORES:</p>
-                <div class="sensor-row">
-                    <span>HUMEDAD:</span>
-                    <span id="humidity-display" class="display-value">--%</span>
-                </div>
-                <div class="sensor-row">
-                    <span>TEMP C:</span>
-                    <span id="temperature-display" class="display-value">--°C</span>
-                </div>
-                <div class="sensor-row">
-                    <span>AIRE:</span>
-                    <span id="air-quality-display" class="display-value">----</span>
-                </div>
+            <div class="display-box">
+                <h2>[ ALARM ] PROTOCOL</h2>
+                <p>STATUS: <span id="alarm-status" class="display-value status-alarm-off">DISARMED</span></p>
+                <p>LAST EVENT: <span id="alarm-last-event" class="display-value">Awaiting alarm trigger...</span></p>
             </div>
         </div>
 
         <div class="log-area">
-            <h2>> LOG <</h2>
+            <h2 class="neon-text">[ SYSTEM ] LOGS</h2>
             <ul id="log-list">
-                <li>[INIT] System booting...</li>
+                <li>[ BOOT ] Console initialized. Waiting for data streams.</li>
             </ul>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
