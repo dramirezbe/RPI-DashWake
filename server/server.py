@@ -16,6 +16,10 @@ import threading
 # --- Configuración del servidor ---
 PORT = 8000 # Puerto donde se servirá la página web
 WEBSOCKET_PORT = 8001 # Puerto para la conexión WebSocket
+# WEB_DIR ahora es relativo a project_root, no a server.py
+# La carpeta 'page' está al mismo nivel que la carpeta 'server'
+# por lo tanto, no necesitamos especificar una ruta relativa desde server.py
+# El servidor HTTP la buscará desde el "directorio de trabajo" que le pasaremos.
 
 # --- Variables globales para WebSockets ---
 CONNECTED_CLIENTS = set() # Conjunto para guardar las conexiones WebSocket activas
@@ -24,8 +28,8 @@ class StateMachine:
     # ... (Tu clase StateMachine existente) ...
     STATE_MAP = {
         'ntp.json':      'NTP_UPDATE',
-        'sensor.json':   'SENSOR_UPDATE',
-        'alarm.json':    'ALARM_STOP', # Renombrado de ALARM_STOP para reflejar su único propósito
+        'sensor.json':   'SENSOR_UPDATE', # Asegúrate de crear este archivo si lo usas
+        'alarm.json':    'ALARM_STOP',    # Asegúrate de crear este archivo si lo usas
     }
 
     @classmethod
@@ -92,13 +96,13 @@ class JSONFileHandler(FileSystemEventHandler):
             print(f"[EVENT] Estado: UNKNOWN para '{filename}'")
 
         # --- Envío de datos por WebSocket a todos los clientes conectados ---
-        message = json.dumps({"filename": filename, "state": state, "data": data}) # Eliminamos indent para reducir tamaño
+        message = json.dumps({"filename": filename, "state": state, "data": data}, indent=2)
         asyncio.run_coroutine_threadsafe(
             self.broadcast_message(message),
             asyncio.get_event_loop()
         )
         print(f"[WEBSOCKET] Enviando mensaje a {len(CONNECTED_CLIENTS)} clientes.")
-        # No imprimir el mensaje completo aquí, puede ser largo
+        print(message)
         print()
 
     async def broadcast_message(self, message: str):
@@ -114,10 +118,13 @@ class JSONFileHandler(FileSystemEventHandler):
 # Handler para servir archivos estáticos
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, directory=None, **kwargs):
+        # Asegúrate de que el directorio se pase correctamente
         super().__init__(*args, directory=directory, **kwargs)
 
 def start_http_server(web_dir_path):
     """Inicia el servidor HTTP en un hilo separado."""
+    # Usamos socketserver.TCPServer para especificar el directorio.
+    # El 'directory' se pasa al Handler.
     class CustomHandler(Handler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(web_dir_path), **kwargs)
@@ -127,14 +134,10 @@ def start_http_server(web_dir_path):
         httpd.serve_forever()
 
 async def websocket_handler(websocket, path):
-    """Maneja las conexiones WebSocket entrantes. Solo escucha, no envía comandos."""
+    """Maneja las conexiones WebSocket entrantes."""
     print(f"[WEBSOCKET] Cliente conectado desde {websocket.remote_address}")
     CONNECTED_CLIENTS.add(websocket)
     try:
-        # Mantén la conexión abierta, si no se esperan mensajes del cliente
-        # simplemente espera a que se cierre.
-        # Si hubiera necesidad de enviar alguna señal inicial, se haría aquí
-        # await websocket.send(json.dumps({"status": "connected"}))
         await websocket.wait_closed()
     except websockets.exceptions.ConnectionClosed as e:
         print(f"[WEBSOCKET] Cliente desconectado desde {websocket.remote_address} ({e.code}: {e.reason})")
@@ -144,6 +147,8 @@ async def websocket_handler(websocket, path):
 
 async def start_websocket_server():
     """Inicia el servidor WebSocket."""
+    # Se asegura de que el bucle de eventos esté configurado correctamente
+    # asyncio.set_event_loop(asyncio.new_event_loop()) # Esto podría crear problemas si ya hay un loop
     print(f"[WEBSOCKET] Servidor WebSocket escuchando en ws://0.0.0.0:{WEBSOCKET_PORT}")
     async with websockets.serve(websocket_handler, "0.0.0.0", WEBSOCKET_PORT):
         await asyncio.Future() # Corre indefinidamente
@@ -152,11 +157,15 @@ async def async_main():
     current_file = Path(__file__).resolve()
     print(f"[INFO] Script ejecutado desde: {current_file}")
 
+    # project_root ahora es la carpeta RPI-DASHWAKE
+    # server.py está en RPI-DASHWAKE/server/server.py
+    # Entonces, subimos dos niveles para llegar a RPI-DASHWAKE
     project_root = current_file.parent.parent
     print(f"[INFO] Directorio raíz del proyecto: {project_root}")
 
+    # Rutas absolutas a las carpetas 'tmp' y 'page'
     tmp_dir = project_root / 'tmp'
-    web_dir_path = project_root / 'page'
+    web_dir_path = project_root / 'page' # Ahora es 'page' en lugar de 'web'
     
     if not web_dir_path.exists():
         print(f"[ERROR] La carpeta web/page no existe en: {web_dir_path}. Por favor, créala y coloca tus archivos HTML/CSS/JS.")
@@ -181,19 +190,19 @@ async def async_main():
 
     try:
         print("[INFO] Esperando cambios en archivos JSON y conexiones web...")
-        await asyncio.Future()
+        await asyncio.Future() # Esto mantendrá el bucle de eventos corriendo
 
     except KeyboardInterrupt:
         print("[INFO] Terminando observador y servidores...")
         observer.stop()
     finally:
         observer.join()
-        websocket_server_task.cancel()
+        websocket_server_task.cancel() # Cancelar la tarea del servidor WebSocket
         try:
-            await websocket_server_task
+            await websocket_server_task # Esperar que se cancele
         except asyncio.CancelledError:
             pass
         print("[INFO] Servidores detenidos.")
 
 if __name__ == "__main__":
-    asyncio.run(async_main())
+    asyncio.run(async_main()) # Ejecutar la función asíncrona principal
