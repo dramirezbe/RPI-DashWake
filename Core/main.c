@@ -12,7 +12,6 @@
 #include <wiringPi.h>
 #include <pthread.h> // Added for thread support!
 #include <unistd.h>  // Added for sleep!
-#include <cJSON.h>
 #include <time.h>
 #include <limits.h>
 #include <libgen.h>   // For dirname
@@ -21,6 +20,7 @@
 
 #include "Modules/btn_handler.h"
 #include "Modules/force_ntp_sync.h"
+#include "Modules/cJSON.h"
 
 #define SERIAL_PORT "/dev/serial0"
 #define BAUD_RATE 9600

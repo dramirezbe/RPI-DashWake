@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from json.decoder import JSONDecodeError # Import this specific error
 
 class StateMachine:
     """
@@ -12,9 +13,9 @@ class StateMachine:
     """
     # Definimos los estados posibles
     STATE_MAP = {
-        'ntp.json':       'NTP_UPDATE',
-        'sensor.json':    'SENSOR_UPDATE',
-        'alarm.json':     'ALARM_STOP',
+        'ntp.json':      'NTP_UPDATE',
+        'sensor.json':   'SENSOR_UPDATE',
+        'alarm.json':    'ALARM_STOP',
     }
 
     @classmethod
@@ -26,11 +27,39 @@ class StateMachine:
         return cls.STATE_MAP.get(filename, 'UNKNOWN')
 
 class JSONFileHandler(FileSystemEventHandler):
-    def __init__(self, tmp_path, debounce_time=0.5):
+    def __init__(self, tmp_path, debounce_time=0.5, max_retries=3, retry_delay=0.1):
         super().__init__()
         self.tmp_path = tmp_path
         self.last_modified = {}  # Guarda timestamp por archivo
         self.debounce_time = debounce_time
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+
+    def _read_json_with_retries(self, file_path: str) -> dict | None:
+        """
+        Intenta leer un archivo JSON con reintentos en caso de JSONDecodeError.
+        """
+        for attempt in range(self.max_retries):
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                return data # Successfully read, return data
+            except JSONDecodeError as e:
+                # This specifically catches JSON parsing errors
+                print(f"[ERROR] Intento {attempt + 1}/{self.max_retries} - Leyendo {file_path}: {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay) # Wait before retrying
+                else:
+                    print(f"[ERROR] Fallo al leer {file_path} después de {self.max_retries} intentos.")
+                    return None # Failed after all retries
+            except FileNotFoundError:
+                print(f"[ERROR] Archivo no encontrado: {file_path}")
+                return None
+            except Exception as e:
+                # Catch other potential file reading errors
+                print(f"[ERROR] Un error inesperado ocurrió al leer {file_path}: {e}")
+                return None
+        return None # Should not be reached if max_retries is > 0 and loop completes
 
     def on_modified(self, event):
         # Filtramos sólo archivos JSON
@@ -44,12 +73,11 @@ class JSONFileHandler(FileSystemEventHandler):
             return
         self.last_modified[event.src_path] = now
 
-        # Cargamos el JSON
-        try:
-            with open(event.src_path, 'r') as f:
-                data = json.load(f)
-        except Exception as e:
-            print(f"[ERROR] Leyendo {event.src_path}: {e}")
+        # Cargamos el JSON con reintentos
+        data = self._read_json_with_retries(event.src_path)
+
+        if data is None:
+            # If data is None, it means reading failed after all retries
             return
 
         # Determinamos el nombre del archivo (solo el basename)
@@ -91,7 +119,8 @@ def main():
         return
 
     # Configuramos watchdog
-    handler = JSONFileHandler(tmp_dir)
+    # You can adjust max_retries and retry_delay here if needed
+    handler = JSONFileHandler(tmp_dir, max_retries=5, retry_delay=0.2) 
     observer = Observer()
     observer.schedule(handler, str(tmp_dir), recursive=False)
     observer.start()

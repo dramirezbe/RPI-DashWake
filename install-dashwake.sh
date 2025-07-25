@@ -3,20 +3,30 @@
 # Detect the script's own directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-CAPTIVE_DIR = $SCRIPT_DIR/captive_portal
+SERVER_DIR=$SCRIPT_DIR/server # Corrected
+CORE_DIR=$SCRIPT_DIR/Core   # Corrected
 
-FRONT_DIR = $SCRIPT_DIR/frontend
+echo "------------Init installation----------------"
 
-echo "------------Core Init installation----------------"
+echo "---Installing Dependencies---"
 
-echo "---Installing WiringPi---"
+sudo apt install wiringpi libcjson1 libcjson-dev libcurl4-openssl-dev python3 python3.12-venv -y
 
-sudo apt install wiringpi libcjson1 libcjson-dev libcurl4-openssl-dev -y
+cd $SERVER_DIR
 
+echo "---Installing Server---"
+
+sudo python3 -m venv venv
+
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+deactivate
 
 echo "---Done---"
 
-echo "------------Core Installation Completed-----------"
+echo "------------Installation Completed-----------"
 
 
 
