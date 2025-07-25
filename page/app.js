@@ -101,14 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Esta función es la encargada de DESACTIVAR la alarma si el JSON lo indica y está activa.
     // "no me importa cómo llegue, lo importante es que llegue"
-    function updateAlarmDisplay(alarmJsonData) { // Renombrado 'data' a 'alarmJsonData' para mayor claridad
+    function updateAlarmDisplay(alarmJsonData) { // alarmJsonData ahora es el objeto que contiene 'state' y 'data'
         // Primero, verificamos si la entrada 'alarm.json' existe en la respuesta del polling y es un objeto válido.
-        if (alarmJsonData && typeof alarmJsonData === 'object') {
+        if (alarmJsonData && typeof alarmJsonData === 'object' && 'data' in alarmJsonData) { // Asegurarse de que 'data' anidada existe
             // Logueamos el contenido real del JSON para confirmación de que llegó y cómo llegó.
             addLog(`Received alarm.json data: ${JSON.stringify(alarmJsonData)}.`, 'ALARM_JSON_DATA');
 
-            // Ahora, solo si la propiedad 'alarm_stopped' existe y es explícitamente true
-            if (alarmJsonData.alarm_stopped === true) {
+            // Acceder a la propiedad anidada: alarmJsonData.data.alarm_stopped
+            const alarmStoppedValue = alarmJsonData.data.alarm_stopped;
+
+            // Ahora, solo si la propiedad anidada 'alarm_stopped' es explícitamente true
+            if (alarmStoppedValue === true) {
                 // Y si la alarma de la UI está ARMED, la desactiva.
                 if (isAlarmActive) {
                     setAlarmVisualState(false, 'JSON Override');
@@ -119,13 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 // Si 'alarm_stopped' no es true (ej. false, null, undefined, u otro tipo),
-                // o si la propiedad no existe, no se desactiva. Solo se ignora su contenido para el estado de la alarma.
-                addLog('`alarm_stopped` is not `true` or missing in `alarm.json`. UI state not affected.', 'INFO');
+                // o si la propiedad no existe dentro de 'data', no se desactiva. Solo se ignora su contenido para el estado de la alarma.
+                addLog('`alarm_stopped` is not `true` or missing in `alarm.json` data. UI state not affected.', 'INFO');
             }
         } else {
-            // Si alarmJsonData no es un objeto válido (ej. null, undefined, o string inesperado)
+            // Si alarmJsonData no es un objeto válido o no tiene la clave 'data'
             // No es una señal de alarma válida para activar/desactivar.
-            addLog('`alarm.json` entry in polling response is missing or malformed. UI state not affected.', 'WARN');
+            addLog('`alarm.json` entry in polling response is missing, malformed, or missing `data` key. UI state not affected.', 'WARN');
         }
     }
 
