@@ -10,7 +10,7 @@ echo "------------Init installation----------------"
 
 echo "---Installing Dependencies---"
 
-sudo apt install wiringpi libcjson1 libcjson-dev libcurl4-openssl-dev python3 python3.12-venv -y
+sudo apt install wiringpi libcjson1 libcjson-dev libcurl4-openssl-dev python3 -y
 
 cd $SERVER_DIR
 
@@ -27,6 +27,3 @@ deactivate
 echo "---Done---"
 
 echo "------------Installation Completed-----------"
-
-
-
