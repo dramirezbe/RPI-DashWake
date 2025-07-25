@@ -1,17 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Referencias a elementos del DOM
-    const pollingStatus = document.getElementById('websocket-status'); // Renombrado para mayor claridad
+    const pollingStatus = document.getElementById('websocket-status');
     const ntpDate = document.getElementById('ntp-date');
     const ntpHour = document.getElementById('ntp-hour');
     const sensorDataList = document.getElementById('sensor-data-list');
     const alarmStatus = document.getElementById('alarm-status');
     const alarmLastEvent = document.getElementById('alarm-last-event');
     const logList = document.getElementById('log-list');
-    const toggleAlarmBtn = document.getElementById('toggle-alarm-btn'); // NUEVO: Referencia al botón
+    const toggleAlarmBtn = document.getElementById('toggle-alarm-btn');
 
     // Estado local de la alarma (para controlar visualmente)
-    // Se inicializa en un estado desconocido o por defecto (desactivado)
-    let isAlarmActive = false; 
+    // Inicialmente desactivada, el primer polling la confirmará.
+    let isAlarmActive = false;
 
     // Función para añadir mensajes al log
     function addLog(message, type = 'INFO') {
@@ -28,8 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Función para activar/desactivar el estado visual de la alarma
     // `active` significa que la alarma está "armada/sonando"
     // `false` significa que está "desarmada/detenida"
-    function setAlarmVisualState(active, source = 'UI') { // Añadimos 'source' para el log
-        if (active && !isAlarmActive) { 
+    // Esta función SÓLO cambia el estado si es diferente.
+    function setAlarmVisualState(active, source = 'UI') {
+        if (active && !isAlarmActive) {
             alarmStatus.textContent = 'ARMED // ALERT';
             alarmStatus.className = 'display-value status-alarm-on';
             alarmLastEvent.textContent = `ALERT active as of ${new Date().toLocaleTimeString('es-CO')}`;
@@ -43,12 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleAlarmBtn.textContent = 'Activate Alarm'; // Texto del botón
             addLog(`Alarm state changed to DISARMED (Source: ${source}).`, 'ALARM');
             isAlarmActive = false;
-        } else if (active && isAlarmActive) {
-            // Si ya está activa y se intenta activar de nuevo, solo actualiza el botón
-            toggleAlarmBtn.textContent = 'Deactivate Alarm';
+        }
+        // Si el estado es el mismo, no hacemos nada (evita logs y actualizaciones innecesarias)
+        // Solo nos aseguramos de que el texto del botón sea correcto en caso de que la UI se haya cargado
+        // y el estado local ya coincida.
+        else if (active && isAlarmActive) {
+             toggleAlarmBtn.textContent = 'Deactivate Alarm';
         } else if (!active && !isAlarmActive) {
-            // Si ya está inactiva y se intenta desactivar de nuevo, solo actualiza el botón
-            toggleAlarmBtn.textContent = 'Activate Alarm';
+             toggleAlarmBtn.textContent = 'Activate Alarm';
         }
     }
 
@@ -83,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         displayValue = (value !== null && value !== undefined) ? String(value) : 'N/A';
                     }
-                    
+
                     const label = sensorLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
                     const sensorRow = document.createElement('p');
                     sensorRow.className = 'sensor-row';
@@ -99,16 +102,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateAlarmDisplay(data) {
         // La información de alarm.json SIEMPRE es {"alarm_stopped": true}.
-        // Esto significa que, cada vez que llega un polling con alarm.json,
-        // la alarma visual debe RESETEARSE a 'DESARMED' si no estaba ya así.
-        if (data && typeof data === 'object' && 'alarm_stopped' in data && data.alarm_stopped === true) {
-            // Forzar el estado visual a DESARMED si no lo está ya, basado en el JSON
-            setAlarmVisualState(false, 'JSON Reset'); 
-            addLog(`Alarm reset to DISARMED by JSON. (alarm_stopped: ${data.alarm_stopped})`, 'ALARM_EVENT');
+        // Esto significa que, si alarm.json *confirma* que está detenida (true),
+        // entonces la UI de la alarma DEBE estar desactivada.
+        // PERO si el alarm.json no se encuentra o no tiene el formato esperado,
+        // NO debe cambiar el estado actual de la alarma visual.
+        if (data && typeof data === 'object' && 'alarm_stopped' in data) {
+            const jsonAlarmStopped = data.alarm_stopped;
+
+            if (jsonAlarmStopped === true) {
+                // Si el JSON dice que la alarma está "parada", entonces la UI debe estar "desarmada".
+                // Esto es el "reset" o "apagado" de la alarma.
+                setAlarmVisualState(false, 'JSON Control');
+                addLog(`Alarm forced to DISARMED by JSON. (alarm_stopped: ${jsonAlarmStopped})`, 'ALARM_EVENT');
+            }
+            // Si jsonAlarmStopped es false, o cualquier otro valor, no hacemos nada aquí
+            // porque la única acción del JSON es desactivar la alarma.
+            // Si el JSON viene con `false` (que no debería según tu descripción)
+            // o no se encuentra el archivo, la alarma visual se mantiene con el estado que le dio el botón.
         } else {
-            // Si alarm.json no existe o no tiene el formato esperado, también forzar a inactivo
-            setAlarmVisualState(false, 'JSON Init/Error');
-            addLog('Invalid or missing alarm.json. Alarm forced to DISARMED.', 'INFO');
+            // Esto ocurre si alarm.json no se encuentra o no tiene el formato esperado.
+            // En este caso, no "reseteamos" la alarma, sino que dejamos que el estado del botón la controle.
+            // Solo lo logueamos para depuración.
+            if (!data) {
+                addLog('alarm.json data not found in polling response. UI state unchanged.', 'WARN');
+            } else {
+                addLog('Invalid Alarm data received from JSON. UI state unchanged.', 'WARN');
+            }
+            // Si es la primera carga y no hay alarm.json, inicializamos el botón
+            if (!isAlarmActive && alarmStatus.textContent.includes('Awaiting')) {
+                 setAlarmVisualState(false, 'Initial Load');
+            }
         }
     }
 
@@ -136,10 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data['sensor.json']) {
                 updateSensorDisplay(data['sensor.json'].data);
             }
-            // La actualización de la alarma se basa EXCLUSIVAMENTE en el JSON
-            // Se asume que alarm.json siempre mandará {"alarm_stopped": true}
-            updateAlarmDisplay(data['alarm.json']); 
-            
+
+            // La lógica de la alarma: el JSON solo sirve para "apagarla"
+            // Si alarm.json no está presente o es inválido, updateAlarmDisplay
+            // no forzará la desactivación.
+            updateAlarmDisplay(data['alarm.json']);
+
         } catch (error) {
             console.error('Error al obtener datos por polling:', error);
             pollingStatus.textContent = '[ STATUS // POLLING // ERROR ]';
@@ -151,9 +176,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listener para el botón de alarma ---
     if (toggleAlarmBtn) {
         toggleAlarmBtn.addEventListener('click', () => {
-            // Invierte el estado *interno* de la alarma y actualiza la UI
-            // NO se comunica con el servidor ni modifica alarm.json
-            setAlarmVisualState(!isAlarmActive, 'Button Click');
+            // El botón SIEMPRE activa la alarma si está desactivada.
+            // Si ya está activa, no hace nada porque solo alarm.json la desactiva.
+            if (!isAlarmActive) {
+                setAlarmVisualState(true, 'Button Click');
+            } else {
+                // Si el botón se presiona cuando ya está activa, no hace nada,
+                // solo se asegura de que el texto del botón sea "Deactivate Alarm".
+                // La desactivación real vendrá del polling de alarm.json
+                toggleAlarmBtn.textContent = 'Deactivate Alarm';
+                addLog('Alarm already active. Waiting for JSON reset.', 'INFO');
+            }
         });
     } else {
         addLog("Error: 'toggle-alarm-btn' not found in DOM.", "CRITICAL");
@@ -161,12 +194,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Iniciar el polling
-    const pollingIntervalMs = 1000; 
+    const pollingIntervalMs = 1000;
     pollingStatus.textContent = '[ STATUS // INIT // POLLING... ]';
     addLog('Client interface loaded. Starting polling.', 'INFO');
 
     // Realiza una primera solicitud de inmediato para cargar los datos iniciales
-    fetchData(); 
+    fetchData();
 
     // Luego, iniciar el polling regular
     setInterval(fetchData, pollingIntervalMs);
