@@ -20,6 +20,7 @@
 #define SERIAL_PORT "/dev/serial0"
 #define BAUD_RATE 9600
 #define BTN_PIN 0
+#define PATH_MAX 4096
 
 char JSON_BASE_DIR[PATH_MAX];
 
@@ -31,6 +32,7 @@ typedef enum {
 } json_post_type_t;
 
 extern volatile bool button_press;
+json_post_type_t json_post_type = IDLE_TYPE;
 
 //UTILS
 
@@ -75,6 +77,7 @@ void *ntp_timer_thread(void *arg) {
 
 
 int main(void) {
+    
     char exe_path[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if (len == -1) {
