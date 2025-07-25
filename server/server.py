@@ -15,6 +15,8 @@ import threading
 import sys # Import sys for better exception info
 
 # --- Configuración de Logging ---
+# Configura el nivel de logging y el formato para ver más detalles.
+# DEBUG para desarrollo, INFO para producción.
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(threadName)s - %(message)s',
                     handlers=[logging.StreamHandler(sys.stdout)])
@@ -50,7 +52,7 @@ class JSONFileHandler(FileSystemEventHandler):
         self.debounce_time = debounce_time
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        # self.loop = loop # Eliminado, ya no es necesario para WebSockets
+        # self.loop = loop # Este parámetro fue eliminado, ya no es necesario
         logger.info(f"JSONFileHandler initialized. Monitoring {tmp_path}")
 
     def _read_json_with_retries(self, file_path: str) -> dict | None:
@@ -111,7 +113,7 @@ class JSONFileHandler(FileSystemEventHandler):
         with data_lock: # Proteger el acceso a la variable global
             LAST_PROCESSED_DATA[filename] = {"state": state, "data": data}
         logger.info(f"[POLLING] Estado global actualizado para '{filename}'.")
-        # print(json.dumps(LAST_PROCESSED_DATA, indent=2)) # Descomentar para ver el estado global
+        # logger.debug(f"Estado global actual: {json.dumps(LAST_PROCESSED_DATA, indent=2)}") # Descomentar para ver el estado global
 
 # --- Funciones de servidor web ---
 
@@ -178,12 +180,11 @@ def start_http_server(web_dir_path):
         raise
 
 # --- ELIMINADAS FUNCIONES WEBSOCKET ---
-# Ya no necesitamos websocket_handler ni start_websocket_server
-# CONNECTED_CLIENTS ya no es necesario
-# asyncio ya no es tan central, pero se mantiene para el loop del Watchdog si fuera necesario
+# No hay funciones relacionadas con websockets aquí.
 # --- FIN ELIMINADAS FUNCIONES WEBSOCKET ---
 
-async def async_main():
+# --- FUNCIÓN PRINCIPAL SÍNCRONA (YA NO ES ASÍNCRONA) ---
+def main(): # CAMBIADO de 'async def async_main():' a 'def main():'
     current_file = Path(__file__).resolve()
     logger.info(f"[INFO] Script ejecutado desde: {current_file}")
 
@@ -206,28 +207,8 @@ async def async_main():
     http_thread.start()
     logger.info("Hilo del servidor HTTP iniciado.")
 
-    # Aunque ya no hay WebSockets, Watchdog necesita un loop si se usa call_soon_threadsafe.
-    # En este caso, como solo actualiza una variable global, el loop no es estrictamente necesario
-    # para la funcionalidad de broadcasting (porque ya no hay broadcasting de WebSockets),
-    # pero mantenerlo no hace daño. Se podría simplificar más si se quiere.
-    # El loop de asyncio es principalmente para tareas asíncronas, y Watchdog en sí no es async.
-    # Mantengo el patrón por si en el futuro se añade alguna funcionalidad asíncrona.
-    # Si quieres eliminar completamente asyncio, el JSONFileHandler no necesitaría 'loop' en su __init__
-    # y 'async_main' se convertiría en una función síncrona regular que solo arranca el hilo HTTP y el observador.
-    # Por "cambiar rápidamente", lo dejo así, pero es una área a simplificar si se quiere.
-    try:
-        main_loop = asyncio.get_running_loop()
-        logger.info(f"Bucle de eventos principal obtenido: {main_loop}")
-    except RuntimeError:
-        # Si no hay un loop en ejecución (ej. si se llama async_main de forma no asíncrona), crea uno
-        main_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(main_loop)
-        logger.info(f"Nuevo bucle de eventos creado: {main_loop}")
-
-
-    # Configurar watchdog. 'loop' ya no se usa dentro del handler para broadcast_message.
-    # Se pasa None o se elimina el parámetro 'loop' del __init__ de JSONFileHandler
-    handler = JSONFileHandler(tmp_dir, max_retries=5, retry_delay=0.2) # 'loop' parameter removed
+    # Configurar watchdog. 'loop' ya no es un parámetro del constructor de JSONFileHandler
+    handler = JSONFileHandler(tmp_dir, max_retries=5, retry_delay=0.2)
     observer = Observer()
     observer.schedule(handler, str(tmp_dir), recursive=False)
     observer.start()
@@ -235,9 +216,7 @@ async def async_main():
 
     try:
         logger.info("[INFO] Esperando cambios en archivos JSON y conexiones web... Presiona Ctrl+C para salir.")
-        # Mantener el hilo principal vivo.
-        # Ya no necesitamos asyncio.Future() si no hay tareas asíncronas de larga duración.
-        # Un simple bucle de espera es suficiente.
+        # Mantener el hilo principal vivo con un bucle síncrono
         while True:
             time.sleep(1) # Espera 1 segundo para no consumir 100% CPU
     except KeyboardInterrupt:
@@ -247,15 +226,14 @@ async def async_main():
     finally:
         logger.info("[INFO] Deteniendo servicios...")
         observer.stop()
-        observer.join() # Wait for the Watchdog thread to finish
+        observer.join() # Esperar a que el hilo de Watchdog termine
         logger.info("Watchdog detenido.")
         
         logger.info("[INFO] Servidores y observadores detenidos.")
 
 if __name__ == "__main__":
-    # async_main ya no es una corutina, así que no se usa asyncio.run
-    # Es una función síncrona que gestiona hilos y el observador
+    # Ahora llamamos a 'main()' directamente, ya no es una coroutine
     try:
-        async_main()
+        main() # CAMBIADO de 'asyncio.run(async_main())' a 'main()'
     except Exception as main_e:
         logger.critical(f"La aplicación falló al iniciar o durante la ejecución principal: {main_e}", exc_info=True)

@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Referencias a elementos del DOM
-    const websocketStatus = document.getElementById('websocket-status'); // Este elemento puede renombrarse si quieres
+    const websocketStatus = document.getElementById('websocket-status'); // Este elemento puede renombrarse si quieres (ej. 'polling-status')
     const ntpDate = document.getElementById('ntp-date');
     const ntpHour = document.getElementById('ntp-hour');
     const sensorDataList = document.getElementById('sensor-data-list');
@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Estado actual de la alarma (para controlar visualmente)
     let isAlarmActive = false;
-    // let alarmInterval = null; // Ya no necesario para parpadeo específico de alarma en este ejemplo
 
     // Función para añadir mensajes al log
     function addLog(message, type = 'INFO') {
@@ -42,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Si el estado no cambia, no hacemos nada para evitar spam de logs.
     }
 
-    // --- Funciones de actualización de la UI (Mismos que antes) ---
+    // --- Funciones de actualización de la UI (Mismos que antes, con pequeñas mejoras de seguridad) ---
 
     function updateNTPDisplay(data) {
         if (data && typeof data === 'object') {
@@ -64,12 +63,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             for (const key in data) {
+                // Asegúrate de que la propiedad pertenece al objeto y no es heredada
                 if (Object.hasOwnProperty.call(data, key)) {
                     const value = data[key];
+                    // Sanitiza el valor si fuera necesario (ej. para evitar XSS si los datos no son de confianza)
+                    const sanitizedValue = (value !== null && value !== undefined) ? String(value) : 'N/A';
+                    
                     const label = sensorLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
                     const sensorRow = document.createElement('p');
                     sensorRow.className = 'sensor-row';
-                    sensorRow.innerHTML = `<span>${label}:</span> <span class="display-value">${value}</span>`;
+                    // Usar textContent para el valor si no esperas HTML
+                    sensorRow.innerHTML = `<span>${label}:</span> <span class="display-value">${sanitizedValue}</span>`;
                     sensorDataList.appendChild(sensorRow);
                 }
             }
@@ -81,14 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateAlarmDisplay(data) {
         if (data && typeof data === 'object' && 'alarm_stopped' in data) {
-            setAlarmVisualState(!data.alarm_stopped);
+            // Si alarm_stopped es true, la alarma está desactivada
+            setAlarmVisualState(!data.alarm_stopped); // true -> false (desactivada), false -> true (activada)
             addLog(`Alarm stopped status received: ${data.alarm_stopped}`, 'ALARM_EVENT');
         } else {
             addLog('Invalid Alarm data received.', 'ERROR');
         }
     }
 
-    // --- Nuevo Código para Polling ---
+    // --- Código para Polling ---
 
     // Función para obtener datos del servidor vía HTTP
     async function fetchData() {
@@ -96,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Asumiendo que el servidor HTTP está en el mismo host y puerto
             const response = await fetch('/data'); // Solicita datos al nuevo endpoint /data
             if (!response.ok) {
+                // Actualiza el estado visual si hay un error HTTP
                 websocketStatus.textContent = '[ STATUS // ERROR // HTTP ]';
                 websocketStatus.className = 'status-disconnected';
                 addLog(`HTTP Error fetching data: ${response.status} ${response.statusText}`, 'ERROR');
@@ -126,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error al obtener datos por polling:', error);
+            // Si hay un error de red o parsing, actualiza el estado visual
             websocketStatus.textContent = '[ STATUS // POLLING // ERROR ]';
             websocketStatus.className = 'status-disconnected';
             addLog(`Polling Error: ${error.message}`, 'CRITICAL');
